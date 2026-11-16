@@ -1,7 +1,20 @@
 import axios from 'axios';
 
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+// Automatically normalize backend URL to ensure valid protocol and /api/v1 path
+const rawUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1').trim();
+let normalizedUrl = rawUrl.startsWith('http://') || rawUrl.startsWith('https://')
+  ? rawUrl
+  : `https://${rawUrl}`;
+
+// Strip any trailing slashes
+normalizedUrl = normalizedUrl.replace(/\/+$/, '');
+
+// Ensure /api/v1 endpoint suffix
+if (!normalizedUrl.endsWith('/api/v1')) {
+  normalizedUrl = `${normalizedUrl}/api/v1`;
+}
+
+export const API_BASE_URL = normalizedUrl;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
