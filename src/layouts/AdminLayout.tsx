@@ -45,7 +45,7 @@ export const AdminLayout: React.FC = () => {
 
           <div className="flex items-center space-x-4">
             <Link
-              to="/"
+              to="/explore"
               className="text-xs font-semibold text-slate-400 hover:text-white flex items-center space-x-1 transition-colors"
             >
               <span>View Bookstore</span>

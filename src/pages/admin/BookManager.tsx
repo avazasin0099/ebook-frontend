@@ -37,7 +37,8 @@ export const BookManager: React.FC = () => {
     salePrice: 399,
     currency: 'INR',
     availableFormats: 'EPUB',
-    status: 'DRAFT',
+    status: 'PUBLISHED',
+    isFeatured: false,
   });
 
   // Upload states
@@ -49,12 +50,28 @@ export const BookManager: React.FC = () => {
   const fetchBooks = async () => {
     try {
       setLoading(true);
-      const res = await bookService.getBooks({
-        search: search || undefined,
-        status: statusFilter || undefined,
-        limit: 50,
-      });
-      setBooks(res.books || []);
+      if (!statusFilter) {
+        // Fetch both published and draft to support both deployed Railway and local backends
+        const [pubRes, draftRes] = await Promise.all([
+          bookService.getBooks({ search: search || undefined, status: 'PUBLISHED', limit: 100 }).catch(() => ({ books: [] })),
+          bookService.getBooks({ search: search || undefined, status: 'DRAFT', limit: 100 }).catch(() => ({ books: [] })),
+        ]);
+        const combined = [...(draftRes.books || []), ...(pubRes.books || [])];
+        const seen = new Set();
+        const uniqueBooks = combined.filter((b) => {
+          if (!b?.id || seen.has(b.id)) return false;
+          seen.add(b.id);
+          return true;
+        });
+        setBooks(uniqueBooks);
+      } else {
+        const res = await bookService.getBooks({
+          search: search || undefined,
+          status: statusFilter,
+          limit: 100,
+        });
+        setBooks(res.books || []);
+      }
     } catch (err) {
       console.error('Failed to load books:', err);
     } finally {
@@ -69,7 +86,18 @@ export const BookManager: React.FC = () => {
   const handleCreateBook = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const created = await bookService.createBook(formData as any);
+      let created = await bookService.createBook(formData as any);
+
+      // Auto-publish if user selected PUBLISHED but the backend saved as DRAFT
+      if (formData.status === 'PUBLISHED' && created.status === 'DRAFT') {
+        try {
+          const published = await bookService.updateStatus(created.id, 'PUBLISHED');
+          created = { ...created, status: published.status };
+        } catch (publishErr) {
+          console.warn('Auto-publish update failed:', publishErr);
+        }
+      }
+
       setBooks([created, ...books]);
       setCreateModalOpen(false);
       setFormData({
@@ -81,9 +109,16 @@ export const BookManager: React.FC = () => {
         salePrice: 399,
         currency: 'INR',
         availableFormats: 'EPUB',
-        status: 'DRAFT',
+        status: 'PUBLISHED',
+        isFeatured: false,
       });
-      alert('Book metadata created successfully! Now upload the cover and manuscript.');
+
+      if (created.status === 'PUBLISHED') {
+        alert('Publication created and published successfully! It is now live in the bookstore.');
+      } else {
+        alert('Book saved as DRAFT successfully! Click "Publish" in the list whenever you want to display it in the bookstore.');
+      }
+      fetchBooks();
     } catch (err: any) {
       alert('Creation failed: ' + (err.response?.data?.message || err.message));
     }
@@ -94,6 +129,7 @@ export const BookManager: React.FC = () => {
     try {
       const updated = await bookService.updateStatus(book.id, newStatus);
       setBooks(books.map((b) => (b.id === book.id ? { ...b, status: updated.status } : b)));
+      alert(`Book status changed to ${updated.status}. ${updated.status === 'PUBLISHED' ? 'It is now visible in the bookstore!' : 'It is now hidden from the bookstore.'}`);
     } catch (err: any) {
       alert('Status update failed: ' + (err.response?.data?.message || err.message));
     }
@@ -382,11 +418,36 @@ export const BookManager: React.FC = () => {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Publication Status</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"
+                  >
+                    <option value="PUBLISHED">Published (Live in Store)</option>
+                    <option value="DRAFT">Draft (Hidden from Store)</option>
+                  </select>
+                </div>
+                <div className="flex items-center pt-5">
+                  <label className="flex items-center space-x-2 text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.isFeatured}
+                      onChange={(e) => setFormData({ ...formData, isFeatured: e.target.checked })}
+                      className="w-4 h-4 rounded text-brand-600 focus:ring-brand-500 bg-slate-950 border-slate-800"
+                    />
+                    <span className="font-semibold text-xs">Featured on Homepage</span>
+                  </label>
+                </div>
+              </div>
+
               <button
                 type="submit"
                 className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-all mt-4"
               >
-                Create Book Metadata
+                {formData.status === 'PUBLISHED' ? 'Create & Publish Book' : 'Save Book as Draft'}
               </button>
             </form>
           </div>
