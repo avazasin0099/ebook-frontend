@@ -1,15 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Users,
-  Search,
-  ShieldCheck,
-  UserCheck,
-  UserX,
-  Smartphone,
-  Plus,
-  X,
-  ShieldAlert,
-} from 'lucide-react';
+import { Search, Plus, X, Users } from 'lucide-react';
+import { Pagination, usePagination } from '../../components/admin/Pagination';
+import { PageTitle } from '../../components/admin/PageHeader';
 import { adminService } from '../../services/admin.service';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
@@ -72,7 +64,7 @@ export const CustomerManager: React.FC = () => {
     try {
       setAdminModalMsg(null);
       await api.post('/admin/admins', newAdmin);
-      alert('Admin account created successfully!');
+      alert('Admin account created.');
       setAdminModalOpen(false);
       setNewAdmin({ firstName: '', lastName: '', email: '', password: '', phone: '' });
     } catch (err: any) {
@@ -80,124 +72,95 @@ export const CustomerManager: React.FC = () => {
     }
   };
 
+  const pager = usePagination(customers, statusFilter);
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center space-x-3">
-            <Users className="w-7 h-7 text-brand-400" />
-            <span>Customer Oversight</span>
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Monitor registered customers, DRM device allocations, and manage account statuses.
-          </p>
-        </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <PageTitle icon={Users} title="Customers" />
 
         {isSuperAdmin && (
-          <button
-            onClick={() => setAdminModalOpen(true)}
-            className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-lg shadow-purple-500/20 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Provision New Admin</span>
+          <button onClick={() => setAdminModalOpen(true)} className="admin-btn-primary self-start sm:self-auto">
+            <Plus className="h-4 w-4" />
+            New admin
           </button>
         )}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Search by customer name, email..."
+            placeholder="Search name or email, then press Enter"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && fetchCustomers()}
-            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
+            className="admin-input pl-9"
           />
         </div>
 
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-brand-500"
+          className="admin-input sm:w-44"
         >
-          <option value="">All Statuses</option>
+          <option value="">All statuses</option>
           <option value="ACTIVE">Active</option>
           <option value="SUSPENDED">Suspended</option>
         </select>
       </div>
 
-      {/* Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+      <div className="admin-card">
+        <div className="admin-table-wrap">
+          <table className="admin-table">
             <thead>
-              <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider bg-slate-950/40">
-                <th className="py-3 px-4 font-semibold">Customer</th>
-                <th className="py-3 px-4 font-semibold">Phone</th>
-                <th className="py-3 px-4 font-semibold">Devices</th>
-                <th className="py-3 px-4 font-semibold">Status</th>
-                <th className="py-3 px-4 font-semibold">Joined Date</th>
-                <th className="py-3 px-4 font-semibold text-right">Actions</th>
+              <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Devices</th>
+                <th>Status</th>
+                <th>Joined</th>
+                <th className="text-right" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-850">
+            <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500">
-                    Loading customers...
-                  </td>
+                  <td colSpan={6} className="py-12 text-center text-gray-500">Loading customers…</td>
                 </tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500">
-                    No customers found matching the criteria.
-                  </td>
+                  <td colSpan={6} className="py-12 text-center text-gray-500">No customers found.</td>
                 </tr>
               ) : (
-                customers.map((cust) => (
-                  <tr key={cust.id} className="hover:bg-slate-850/40 transition-colors">
-                    <td className="py-3 px-4">
-                      <p className="font-bold text-white">
+                pager.pageItems.map((cust) => (
+                  <tr key={cust.id}>
+                    <td>
+                      <p className="font-medium text-gray-900">
                         {cust.firstName} {cust.lastName}
                       </p>
-                      <p className="text-[11px] text-slate-400">{cust.email}</p>
+                      <p className="text-xs text-gray-500">{cust.email}</p>
                     </td>
-                    <td className="py-3 px-4 text-slate-300">{cust.phone || '—'}</td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center text-[11px] text-slate-300 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-                        <Smartphone className="w-3 h-3 mr-1 text-brand-400" />
-                        {cust.devices?.length || 0} / 3 slots
+                    <td className="whitespace-nowrap">{cust.phone || '—'}</td>
+                    <td className="whitespace-nowrap text-gray-600">{cust.devices?.length || 0} of 3</td>
+                    <td>
+                      <span className={cust.status === 'ACTIVE' ? 'admin-badge-green' : 'admin-badge-red'}>
+                        {cust.status === 'ACTIVE' ? 'Active' : 'Suspended'}
                       </span>
                     </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                          cust.status === 'ACTIVE'
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                        }`}
-                      >
-                        {cust.status}
-                      </span>
+                    <td className="whitespace-nowrap text-gray-500">
+                      {new Date(cust.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </td>
-                    <td className="py-3 px-4 text-slate-400">
-                      {new Date(cust.createdAt).toLocaleDateString('en-IN')}
-                    </td>
-                    <td className="py-3 px-4 text-right">
+                    <td className="text-right">
                       <button
                         onClick={() => handleToggleStatus(cust)}
                         disabled={togglingId === cust.id}
-                        className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-colors disabled:opacity-50 ${
-                          cust.status === 'ACTIVE'
-                            ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
-                            : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                        className={`text-sm font-medium disabled:opacity-50 ${
+                          cust.status === 'ACTIVE' ? 'text-red-600 hover:text-red-700' : 'text-[#0b498d] hover:text-blue-700'
                         }`}
                       >
-                        {cust.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
+                        {cust.status === 'ACTIVE' ? 'Suspend' : 'Reactivate'}
                       </button>
                     </td>
                   </tr>
@@ -206,91 +169,98 @@ export const CustomerManager: React.FC = () => {
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={pager.page}
+          pageCount={pager.pageCount}
+          pageSize={pager.pageSize}
+          total={pager.total}
+          onPageChange={pager.setPage}
+          onPageSizeChange={pager.setPageSize}
+          noun="customers"
+        />
       </div>
 
-      {/* Super Admin Create Admin Modal */}
       {adminModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 relative max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center space-x-2">
-                <ShieldCheck className="w-5 h-5 text-purple-400" />
-                <h3 className="font-bold text-white text-base">Provision New Admin</h3>
-              </div>
-              <button onClick={() => setAdminModalOpen(false)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
+        <div className="admin-modal-backdrop">
+          <div className="admin-modal max-w-md">
+            <div className="mb-5 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Add an admin</h3>
+              <button onClick={() => setAdminModalOpen(false)} className="admin-btn-ghost -mr-2">
+                <X className="h-5 w-5" />
               </button>
             </div>
 
             {adminModalMsg && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
-                {adminModalMsg}
-              </div>
+              <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{adminModalMsg}</div>
             )}
 
-            <form onSubmit={handleCreateAdmin} className="space-y-3 text-xs">
+            <form onSubmit={handleCreateAdmin} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">First Name</label>
+                  <label className="admin-label">First name</label>
                   <input
                     type="text"
                     required
                     value={newAdmin.firstName}
                     onChange={(e) => setNewAdmin({ ...newAdmin, firstName: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-purple-500"
+                    className="admin-input"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Last Name</label>
+                  <label className="admin-label">Last name</label>
                   <input
                     type="text"
                     required
                     value={newAdmin.lastName}
                     onChange={(e) => setNewAdmin({ ...newAdmin, lastName: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-purple-500"
+                    className="admin-input"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Email</label>
+                <label className="admin-label">Email</label>
                 <input
                   type="email"
                   required
                   value={newAdmin.email}
                   onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-purple-500"
+                  className="admin-input"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Password</label>
+                <label className="admin-label">Password</label>
                 <input
                   type="password"
                   required
                   value={newAdmin.password}
                   onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
-                  placeholder="Min 8 characters"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-purple-500"
+                  placeholder="At least 8 characters"
+                  className="admin-input"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Phone (Optional)</label>
+                <label className="admin-label">
+                  Phone <span className="font-normal text-gray-400">(optional)</span>
+                </label>
                 <input
                   type="tel"
                   value={newAdmin.phone}
                   onChange={(e) => setNewAdmin({ ...newAdmin, phone: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-purple-500"
+                  className="admin-input"
                 />
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold transition-all mt-4"
-              >
-                Provision Admin Account
-              </button>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setAdminModalOpen(false)} className="admin-btn-secondary">
+                  Cancel
+                </button>
+                <button type="submit" className="admin-btn-primary">
+                  Create admin
+                </button>
+              </div>
             </form>
           </div>
         </div>

@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { ShoppingBag, Search, CheckCircle2, Clock, XCircle, FileText } from 'lucide-react';
+import { Search, ShoppingBag } from 'lucide-react';
+import { Pagination, usePagination } from '../../components/admin/Pagination';
+import { PageHeader } from '../../components/admin/PageHeader';
 import { adminService } from '../../services/admin.service';
+
+const statusBadge = (status: string) =>
+  status === 'PAID' ? 'admin-badge-green' : status === 'PENDING' ? 'admin-badge-amber' : 'admin-badge-red';
+
+const prettyStatus = (s: string) => (s ? s.charAt(0) + s.slice(1).toLowerCase() : '—');
 
 export const OrderManager: React.FC = () => {
   const [orders, setOrders] = useState<any[]>([]);
@@ -19,93 +26,67 @@ export const OrderManager: React.FC = () => {
     o.user?.email?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const pager = usePagination(filteredOrders, search);
+
   return (
     <div className="space-y-6">
-      <div className="pb-6 border-b border-slate-800">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center space-x-3">
-          <ShoppingBag className="w-7 h-7 text-brand-400" />
-          <span>Platform Orders</span>
-        </h1>
-        <p className="text-xs text-slate-400 mt-1">
-          Review all commercial sales and Cashfree payment transactions across the platform.
-        </p>
-      </div>
+      <PageHeader icon={ShoppingBag} title="Orders" />
 
       <div className="relative w-full sm:w-80">
-        <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <input
           type="text"
-          placeholder="Search by order #, customer email..."
+          placeholder="Search order number or email"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
+          className="admin-input pl-9"
         />
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+      <div className="admin-card">
+        <div className="admin-table-wrap">
+          <table className="admin-table">
             <thead>
-              <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider bg-slate-950/40">
-                <th className="py-3 px-4 font-semibold">Order #</th>
-                <th className="py-3 px-4 font-semibold">Customer</th>
-                <th className="py-3 px-4 font-semibold">Publications</th>
-                <th className="py-3 px-4 font-semibold">Net Amount</th>
-                <th className="py-3 px-4 font-semibold">Status</th>
-                <th className="py-3 px-4 font-semibold">Date</th>
+              <tr>
+                <th>Order</th>
+                <th>Customer</th>
+                <th>Items</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th className="text-right">Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-850">
+            <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500">
-                    Loading orders...
-                  </td>
+                  <td colSpan={6} className="py-12 text-center text-gray-500">Loading orders…</td>
                 </tr>
               ) : filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500">
-                    No orders recorded yet.
-                  </td>
+                  <td colSpan={6} className="py-12 text-center text-gray-500">No orders yet.</td>
                 </tr>
               ) : (
-                filteredOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-slate-850/40 transition-colors">
-                    <td className="py-3 px-4 font-mono font-bold text-white">{order.orderNumber}</td>
-                    <td className="py-3 px-4">
-                      <p className="text-white font-medium">{order.user?.email || order.userId}</p>
-                      <p className="text-[11px] text-slate-400">
+                pager.pageItems.map((order) => (
+                  <tr key={order.id}>
+                    <td className="whitespace-nowrap font-mono text-xs text-gray-900">{order.orderNumber}</td>
+                    <td>
+                      <p className="font-medium text-gray-900">
                         {order.user?.firstName} {order.user?.lastName}
                       </p>
+                      <p className="text-xs text-gray-500">{order.user?.email || order.userId}</p>
                     </td>
-                    <td className="py-3 px-4 text-slate-300">
-                      {order.items?.length || 0} items
-                    </td>
-                    <td className="py-3 px-4 font-bold text-brand-400">
+                    <td>{order.items?.length || 0}</td>
+                    <td className="whitespace-nowrap font-medium text-gray-900">
                       ₹{Number(order.netAmount).toLocaleString('en-IN')}
                     </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                          order.status === 'PAID'
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : order.status === 'PENDING'
-                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                            : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                        }`}
-                      >
-                        {order.status === 'PAID' && <CheckCircle2 className="w-3 h-3 mr-1" />}
-                        {order.status === 'PENDING' && <Clock className="w-3 h-3 mr-1" />}
-                        {order.status}
-                      </span>
+                    <td>
+                      <span className={statusBadge(order.status)}>{prettyStatus(order.status)}</span>
                     </td>
-                    <td className="py-3 px-4 text-slate-400">
+                    <td className="whitespace-nowrap text-right text-gray-500">
                       {new Date(order.createdAt).toLocaleDateString('en-IN', {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
                       })}
                     </td>
                   </tr>
@@ -114,6 +95,15 @@ export const OrderManager: React.FC = () => {
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={pager.page}
+          pageCount={pager.pageCount}
+          pageSize={pager.pageSize}
+          total={pager.total}
+          onPageChange={pager.setPage}
+          onPageSizeChange={pager.setPageSize}
+          noun="orders"
+        />
       </div>
     </div>
   );

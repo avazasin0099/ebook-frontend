@@ -69,3 +69,18 @@ export interface LibraryItem {
     lastReadAt?: string;
   } | null;
 }
+
+export type ContactStatus = 'PENDING' | 'IN_PROGRESS' | 'RESOLVED';
+
+export interface ContactSubmission {
+  id: string;
+  name: string;
+  phone: string;
+  topic: string;
+  message: string;
+  status: ContactStatus | string;
+  adminNotes: string | null;
+  submittedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}

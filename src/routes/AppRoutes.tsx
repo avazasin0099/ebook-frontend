@@ -41,6 +41,7 @@ import { BookManager } from '../pages/admin/BookManager';
 import { CustomerManager } from '../pages/admin/CustomerManager';
 import { OrderManager } from '../pages/admin/OrderManager';
 import { LicenseManager } from '../pages/admin/LicenseManager';
+import { ContactManager } from '../pages/admin/ContactManager';
 
 export const router = createBrowserRouter([
   // Public Storefront Routes
@@ -113,6 +114,7 @@ export const router = createBrowserRouter([
       { path: 'customers', element: <CustomerManager /> },
       { path: 'orders', element: <OrderManager /> },
       { path: 'licenses', element: <LicenseManager /> },
+      { path: 'contacts', element: <ContactManager /> },
     ],
   },
 
