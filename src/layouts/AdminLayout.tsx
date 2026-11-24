@@ -113,7 +113,7 @@ const SidebarContent: React.FC<SidebarProps> = ({
 
     <div className={`border-t border-white/15 ${collapsed ? 'p-2.5' : 'p-3'}`}>
       <Link
-        to="/"
+        to="/explore"
         title={collapsed ? 'View store' : undefined}
         className={`mb-2 flex items-center rounded-xl py-2.5 text-sm text-blue-50/90 hover:bg-white/10 hover:text-white ${collapsed ? 'justify-center' : 'justify-between px-3.5'
           }`}

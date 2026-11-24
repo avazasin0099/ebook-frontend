@@ -18,32 +18,15 @@ export const Home: React.FC = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const navigate = useNavigate();
 
-  React.useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      const userRole = typeof user?.role === 'string' ? user.role : (user?.role as any)?.name;
-      if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
-    }
-  }, [authLoading, isAuthenticated, user, navigate]);
-
   const { data: featuredData, isLoading } = useQuery({
     queryKey: ['featuredBooks'],
     queryFn: () => bookService.getBooks({ sort: 'popular', limit: 8 }),
-    enabled: !isAuthenticated,
   });
 
   const { data: categories } = useQuery({
     queryKey: ['categories'],
     queryFn: () => bookService.getCategories(),
-    enabled: !isAuthenticated,
   });
-
-  if (authLoading || isAuthenticated) {
-    return null;
-  }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
