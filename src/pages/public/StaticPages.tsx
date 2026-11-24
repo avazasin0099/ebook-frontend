@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { contactService } from '../../services/contact.service';
 import { ShieldCheck, Mail, BookOpen, Smartphone, FileText, CheckCircle } from 'lucide-react';
 
 export const AboutPage: React.FC = () => {
@@ -53,7 +54,29 @@ export const AboutPage: React.FC = () => {
   );
 };
 
+const CONTACT_CATEGORIES = ['Book purchase', 'Payment or order issue', 'Reading app help', 'Partnership', 'Other'];
+
 export const ContactPage: React.FC = () => {
+  const [form, setForm] = useState({ name: '', phone: '', category: '', message: '' });
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setStatus('sending');
+      await contactService.submit({
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        topic: form.category,
+        message: form.message.trim(),
+      });
+      setStatus('sent');
+      setForm({ name: '', phone: '', category: '', message: '' });
+    } catch {
+      setStatus('error');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-white py-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-2xl mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-8 space-y-8">
@@ -82,50 +105,75 @@ export const ContactPage: React.FC = () => {
           </div>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); alert('Message received! Our support team will get back to you within 24 hours.'); }} className="space-y-4">
+        {status === 'sent' ? (
+          <div className="p-6 rounded-xl bg-slate-950 border border-slate-800 text-center space-y-2">
+            <CheckCircle className="w-8 h-8 text-emerald-400 mx-auto" />
+            <p className="font-semibold text-white">Thanks, we've got your message.</p>
+            <p className="text-sm text-slate-400">Someone from our team will call you back shortly.</p>
+          </div>
+        ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1">Full Name</label>
             <input
               type="text"
               required
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder="Your Name"
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Email Address</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1">Phone Number</label>
             <input
-              type="email"
+              type="tel"
               required
-              placeholder="you@domain.com"
+              pattern="[0-9+ ]{7,16}"
+              title="Digits only, e.g. 98765 43210"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              placeholder="98765 43210"
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Subject</label>
-            <input
-              type="text"
+            <label className="block text-xs font-medium text-slate-300 mb-1">Category</label>
+            <select
               required
-              placeholder="Order / Reader / Partnership Inquiry"
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500"
-            />
+            >
+              <option value="" disabled>Select a category</option>
+              {CONTACT_CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1">Message</label>
             <textarea
               rows={4}
               required
+              value={form.message}
+              onChange={(e) => setForm({ ...form, message: e.target.value })}
               placeholder="How can we help you?"
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 resize-none"
             />
           </div>
+          {status === 'error' && (
+            <p className="text-sm text-red-400">Something went wrong sending your message. Please try again.</p>
+          )}
           <button
             type="submit"
-            className="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-all shadow-lg shadow-brand-500/25"
+            disabled={status === 'sending'}
+            className="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-all disabled:opacity-60"
           >
-            Send Message
+            {status === 'sending' ? 'Sending…' : 'Send Message'}
           </button>
         </form>
+        )}
       </div>
     </div>
   );

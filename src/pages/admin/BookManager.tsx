@@ -1,18 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import {
-  BookOpen,
-  Plus,
-  Upload,
-  Image,
-  FileCheck,
-  CheckCircle,
-  XCircle,
-  Edit2,
-  Lock,
-  Search,
-  X,
-  AlertCircle,
-} from 'lucide-react';
+import { BookOpen, Plus, Upload, Search, X } from 'lucide-react';
+import { Pagination, usePagination } from '../../components/admin/Pagination';
+import { PageTitle } from '../../components/admin/PageHeader';
 import { bookService } from '../../services/book.service';
 import { Book } from '../../types';
 
@@ -112,12 +101,11 @@ export const BookManager: React.FC = () => {
         status: 'PUBLISHED',
         isFeatured: false,
       });
-
-      if (created.status === 'PUBLISHED') {
-        alert('Publication created and published successfully! It is now live in the bookstore.');
-      } else {
-        alert('Book saved as DRAFT successfully! Click "Publish" in the list whenever you want to display it in the bookstore.');
-      }
+      alert(
+        created.status === 'PUBLISHED'
+          ? 'Book created and published — it’s now live in the store. Next, upload its cover and file.'
+          : 'Book saved as a draft. Click “Publish” in the list when you want it in the store.'
+      );
       fetchBooks();
     } catch (err: any) {
       alert('Creation failed: ' + (err.response?.data?.message || err.message));
@@ -129,7 +117,11 @@ export const BookManager: React.FC = () => {
     try {
       const updated = await bookService.updateStatus(book.id, newStatus);
       setBooks(books.map((b) => (b.id === book.id ? { ...b, status: updated.status } : b)));
-      alert(`Book status changed to ${updated.status}. ${updated.status === 'PUBLISHED' ? 'It is now visible in the bookstore!' : 'It is now hidden from the bookstore.'}`);
+      alert(
+        updated.status === 'PUBLISHED'
+          ? 'Published — it’s now visible in the store.'
+          : 'Unpublished — it’s now hidden from the store.'
+      );
     } catch (err: any) {
       alert('Status update failed: ' + (err.response?.data?.message || err.message));
     }
@@ -151,163 +143,143 @@ export const BookManager: React.FC = () => {
         await bookService.uploadManuscript(activeBook.id, manuscriptFile);
       }
 
-      setUploadMessage('Assets uploaded successfully! The DRM encryption engine has processed the publication.');
+      setUploadMessage('Uploaded. The book file has been encrypted and is ready to sell.');
       setCoverFile(null);
       setManuscriptFile(null);
       fetchBooks();
     } catch (err: any) {
-      setUploadMessage('Error uploading assets: ' + (err.response?.data?.message || err.message));
+      setUploadMessage('Upload failed: ' + (err.response?.data?.message || err.message));
     } finally {
       setUploading(false);
     }
   };
 
+  const pager = usePagination(books, statusFilter + search);
+
+  const fileInput =
+    'admin-input p-1.5 file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100';
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center space-x-3">
-            <BookOpen className="w-7 h-7 text-brand-400" />
-            <span>Book Catalog Management</span>
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Create, publish, and manage digital publications with Readium LCP encryption.
-          </p>
-        </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <PageTitle icon={BookOpen} title="Books" />
 
-        <button
-          onClick={() => setCreateModalOpen(true)}
-          className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-lg shadow-brand-500/20 transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add New Publication</span>
+        <button onClick={() => setCreateModalOpen(true)} className="admin-btn-primary self-start sm:self-auto">
+          <Plus className="h-4 w-4" />
+          Add book
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Search by title, author..."
+            placeholder="Search title or author, then press Enter"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && fetchBooks()}
-            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
+            className="admin-input pl-9"
           />
         </div>
 
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-brand-500"
+          className="admin-input sm:w-44"
         >
-          <option value="">All Statuses</option>
+          <option value="">All statuses</option>
           <option value="PUBLISHED">Published</option>
           <option value="DRAFT">Draft</option>
           <option value="ARCHIVED">Archived</option>
         </select>
       </div>
 
-      {/* Book Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+      <div className="admin-card">
+        <div className="admin-table-wrap">
+          <table className="admin-table">
             <thead>
-              <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider bg-slate-950/40">
-                <th className="py-3 px-4 font-semibold">Cover</th>
-                <th className="py-3 px-4 font-semibold">Title & Metadata</th>
-                <th className="py-3 px-4 font-semibold">Pricing</th>
-                <th className="py-3 px-4 font-semibold">Formats</th>
-                <th className="py-3 px-4 font-semibold">Status</th>
-                <th className="py-3 px-4 font-semibold text-right">Actions</th>
+              <tr>
+                <th>Book</th>
+                <th>Price</th>
+                <th>Format</th>
+                <th>Status</th>
+                <th className="text-right" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-850">
+            <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500">
-                    Loading publications...
-                  </td>
+                  <td colSpan={5} className="py-12 text-center text-gray-500">Loading books…</td>
                 </tr>
               ) : books.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500">
-                    No publications found. Click "Add New Publication" to create one.
+                  <td colSpan={5} className="py-12 text-center text-gray-500">
+                    No books yet. Use “Add book” to create your first one.
                   </td>
                 </tr>
               ) : (
-                books.map((book) => (
-                  <tr key={book.id} className="hover:bg-slate-850/40 transition-colors">
-                    <td className="py-3 px-4">
-                      {book.coverImageUrl ? (
-                        <img
-                          src={book.coverImageUrl}
-                          alt={book.title}
-                          className="w-10 h-14 object-cover rounded border border-slate-700"
-                        />
-                      ) : (
-                        <div className="w-10 h-14 bg-slate-800 rounded flex items-center justify-center text-[9px] text-slate-500 text-center">
-                          No Cover
+                pager.pageItems.map((book) => (
+                  <tr key={book.id}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <BookCover url={book.coverImageUrl} title={book.title} />
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900">{book.title}</p>
+                          <p className="text-xs text-gray-500">
+                            {book.authors?.map((a) => a.name).join(', ') || 'No author added'}
+                          </p>
                         </div>
-                      )}
+                      </div>
                     </td>
-                    <td className="py-3 px-4">
-                      <p className="font-bold text-white text-sm">{book.title}</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        {book.authors?.map((a) => a.name).join(', ') || 'No author attached'}
-                      </p>
-                      <span className="text-[10px] text-slate-500 font-mono">Slug: {book.slug}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="font-bold text-white">₹{Number(book.salePrice).toLocaleString('en-IN')}</span>
+                    <td className="whitespace-nowrap">
+                      <span className="font-medium text-gray-900">₹{Number(book.salePrice).toLocaleString('en-IN')}</span>
                       {Number(book.basePrice) > Number(book.salePrice) && (
-                        <span className="text-[10px] text-slate-500 line-through ml-1.5">
+                        <span className="ml-1.5 text-xs text-gray-400 line-through">
                           ₹{Number(book.basePrice).toLocaleString('en-IN')}
                         </span>
                       )}
                     </td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center text-[10px] font-semibold text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded border border-brand-500/20">
-                        <Lock className="w-2.5 h-2.5 mr-1" />
-                        {book.availableFormats}
-                      </span>
+                    <td className="whitespace-nowrap text-gray-600">
+                      {book.availableFormats === 'BOTH' ? 'EPUB + PDF' : book.availableFormats}
                     </td>
-                    <td className="py-3 px-4">
+                    <td>
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                        className={
                           book.status === 'PUBLISHED'
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                        }`}
+                            ? 'admin-badge-green'
+                            : book.status === 'ARCHIVED'
+                            ? 'admin-badge-gray'
+                            : 'admin-badge-amber'
+                        }
                       >
-                        {book.status}
+                        {book.status.charAt(0) + book.status.slice(1).toLowerCase()}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right space-x-2">
-                      <button
-                        onClick={() => {
-                          setActiveBook(book);
-                          setUploadModalOpen(true);
-                        }}
-                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-                        title="Upload Cover & Manuscript Assets"
-                      >
-                        <Upload className="w-3.5 h-3.5" />
-                      </button>
-
-                      <button
-                        onClick={() => handleToggleStatus(book)}
-                        className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-colors ${
-                          book.status === 'PUBLISHED'
-                            ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
-                            : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                        }`}
-                      >
-                        {book.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
-                      </button>
+                    <td className="whitespace-nowrap text-right">
+                      <div className="inline-flex items-center gap-1">
+                        <button
+                          onClick={() => {
+                            setActiveBook(book);
+                            setUploadMessage(null);
+                            setUploadModalOpen(true);
+                          }}
+                          className="admin-btn-ghost"
+                          title="Upload cover and book file"
+                        >
+                          <Upload className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleToggleStatus(book)}
+                          className={`rounded-md px-2.5 py-1.5 text-sm font-medium ${
+                            book.status === 'PUBLISHED'
+                              ? 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                              : 'text-[#0b498d] hover:bg-blue-50'
+                          }`}
+                        >
+                          {book.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -315,22 +287,30 @@ export const BookManager: React.FC = () => {
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={pager.page}
+          pageCount={pager.pageCount}
+          pageSize={pager.pageSize}
+          total={pager.total}
+          onPageChange={pager.setPage}
+          onPageSizeChange={pager.setPageSize}
+          noun="books"
+        />
       </div>
 
-      {/* Create Book Modal */}
       {createModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 relative max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="font-bold text-white text-base">Create New Book</h3>
-              <button onClick={() => setCreateModalOpen(false)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
+        <div className="admin-modal-backdrop">
+          <div className="admin-modal max-w-lg">
+            <div className="mb-5 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Add a book</h3>
+              <button onClick={() => setCreateModalOpen(false)} className="admin-btn-ghost -mr-2">
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateBook} className="space-y-3 text-xs">
+            <form onSubmit={handleCreateBook} className="space-y-4">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Book Title</label>
+                <label className="admin-label">Title</label>
                 <input
                   type="text"
                   required
@@ -343,183 +323,206 @@ export const BookManager: React.FC = () => {
                     })
                   }
                   placeholder="e.g. Microservices Architecture Masterclass"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"
+                  className="admin-input"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Slug</label>
+                <label className="admin-label">
+                  URL slug <span className="font-normal text-gray-400">(filled in from the title)</span>
+                </label>
                 <input
                   type="text"
                   required
                   value={formData.slug}
                   onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-brand-500"
+                  className="admin-input font-mono text-xs"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Description</label>
+                <label className="admin-label">Description</label>
                 <textarea
                   rows={3}
                   required
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Comprehensive description of the publication..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500 resize-none"
+                  placeholder="What is this book about?"
+                  className="admin-input resize-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Base Price (₹)</label>
+                  <label className="admin-label">List price (₹)</label>
                   <input
                     type="number"
                     required
                     value={formData.basePrice}
                     onChange={(e) => setFormData({ ...formData, basePrice: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"
+                    className="admin-input"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Sale Price (₹)</label>
+                  <label className="admin-label">Selling price (₹)</label>
                   <input
                     type="number"
                     required
                     value={formData.salePrice}
                     onChange={(e) => setFormData({ ...formData, salePrice: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"
+                    className="admin-input"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Language</label>
+                  <label className="admin-label">Language</label>
                   <input
                     type="text"
                     required
                     value={formData.language}
                     onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"
+                    className="admin-input"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Format</label>
+                  <label className="admin-label">Format</label>
                   <select
                     value={formData.availableFormats}
                     onChange={(e) => setFormData({ ...formData, availableFormats: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"
+                    className="admin-input"
                   >
                     <option value="EPUB">EPUB</option>
                     <option value="PDF">PDF</option>
-                    <option value="BOTH">BOTH (EPUB & PDF)</option>
+                    <option value="BOTH">EPUB + PDF</option>
                   </select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 items-end gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Publication Status</label>
+                  <label className="admin-label">Status</label>
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"
+                    className="admin-input"
                   >
-                    <option value="PUBLISHED">Published (Live in Store)</option>
-                    <option value="DRAFT">Draft (Hidden from Store)</option>
+                    <option value="PUBLISHED">Published (live in store)</option>
+                    <option value="DRAFT">Draft (hidden)</option>
                   </select>
                 </div>
-                <div className="flex items-center pt-5">
-                  <label className="flex items-center space-x-2 text-slate-300 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.isFeatured}
-                      onChange={(e) => setFormData({ ...formData, isFeatured: e.target.checked })}
-                      className="w-4 h-4 rounded text-brand-600 focus:ring-brand-500 bg-slate-950 border-slate-800"
-                    />
-                    <span className="font-semibold text-xs">Featured on Homepage</span>
-                  </label>
-                </div>
+                <label className="flex cursor-pointer items-center gap-2 pb-2.5 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={formData.isFeatured}
+                    onChange={(e) => setFormData({ ...formData, isFeatured: e.target.checked })}
+                    className="h-4 w-4 rounded border-gray-300 text-[#0b498d] focus:ring-[#0b498d]"
+                  />
+                  Feature on homepage
+                </label>
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-all mt-4"
-              >
-                {formData.status === 'PUBLISHED' ? 'Create & Publish Book' : 'Save Book as Draft'}
-              </button>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setCreateModalOpen(false)} className="admin-btn-secondary">
+                  Cancel
+                </button>
+                <button type="submit" className="admin-btn-primary">
+                  {formData.status === 'PUBLISHED' ? 'Create & publish' : 'Save as draft'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Asset Upload Modal */}
       {uploadModalOpen && activeBook && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 relative max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div>
-                <h3 className="font-bold text-white text-base">Upload Publication Assets</h3>
-                <p className="text-[11px] text-slate-400 truncate max-w-sm">{activeBook.title}</p>
+        <div className="admin-modal-backdrop">
+          <div className="admin-modal max-w-lg">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h3 className="text-lg font-semibold text-gray-900">Upload files</h3>
+                <p className="truncate text-sm text-gray-500">{activeBook.title}</p>
               </div>
-              <button onClick={() => setUploadModalOpen(false)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
+              <button onClick={() => setUploadModalOpen(false)} className="admin-btn-ghost -mr-2">
+                <X className="h-5 w-5" />
               </button>
             </div>
 
             {uploadMessage && (
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300">
-                {uploadMessage}
-              </div>
+              <div className="mb-4 rounded-lg bg-gray-50 p-3 text-sm text-gray-700">{uploadMessage}</div>
             )}
 
-            <form onSubmit={handleUploadAssets} className="space-y-4 text-xs">
+            <form onSubmit={handleUploadAssets} className="space-y-4">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  Book Cover Image (JPEG/PNG/WebP, max 10MB)
-                </label>
+                <label className="admin-label">Cover image</label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => setCoverFile(e.target.files?.[0] || null)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-brand-600 file:text-white hover:file:bg-brand-500"
+                  className={fileInput}
                 />
+                <p className="mt-1 text-xs text-gray-500">JPG, PNG or WebP, up to 10 MB.</p>
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  Original Publication Manuscript (EPUB / PDF, max 200MB)
-                </label>
+                <label className="admin-label">Book file</label>
                 <input
                   type="file"
                   accept=".epub,.pdf"
                   onChange={(e) => setManuscriptFile(e.target.files?.[0] || null)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-brand-600 file:text-white hover:file:bg-brand-500"
+                  className={fileInput}
                 />
-                <p className="text-[10px] text-slate-500 mt-1">
-                  * Uploaded files are stored in private storage and encrypted using Readium LCP AES-256 before delivery.
+                <p className="mt-1 text-xs text-gray-500">
+                  EPUB or PDF, up to 200 MB. It’s stored privately and encrypted before readers download it.
                 </p>
               </div>
 
-              <button
-                type="submit"
-                disabled={uploading || (!coverFile && !manuscriptFile)}
-                className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
-              >
-                {uploading ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4" />
-                    <span>Upload & Process DRM</span>
-                  </>
-                )}
-              </button>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setUploadModalOpen(false)} className="admin-btn-secondary">
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploading || (!coverFile && !manuscriptFile)}
+                  className="admin-btn-primary"
+                >
+                  {uploading ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Uploading…
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      Upload
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
           </div>
         </div>
       )}
     </div>
+  );
+};
+
+const BookCover: React.FC<{ url?: string | null; title: string }> = ({ url, title }) => {
+  const [failed, setFailed] = useState(false);
+  if (!url || failed) {
+    return (
+      <div className="flex h-12 w-9 shrink-0 items-center justify-center rounded bg-gray-100 text-gray-400">
+        <BookOpen className="h-4 w-4" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt={title}
+      onError={() => setFailed(true)}
+      className="h-12 w-9 shrink-0 rounded object-cover ring-1 ring-gray-200"
+    />
   );
 };
